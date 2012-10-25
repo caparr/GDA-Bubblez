@@ -30,7 +30,7 @@ namespace PuzzleBobble
             colour = newColour;
             size = new Vector2(22.0f, 22.0f);
             //horizontalBoundaries = new Vector2(leftBoundary, rightBoundary);
-            isHanging = true;
+            isHanging = false;
         }
 
         public bool Collides(BubbleSprite otherSprite)

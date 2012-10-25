@@ -54,7 +54,7 @@ namespace PuzzleBobble
             Content.RootDirectory = "Content";
 
             graphics.PreferredBackBufferWidth = 400;
-            graphics.PreferredBackBufferHeight = 400;
+            graphics.PreferredBackBufferHeight = 200;
 
         }
 
@@ -72,9 +72,9 @@ namespace PuzzleBobble
             spriteBatch = new SpriteBatch(this.graphics.GraphicsDevice);
             bubbleList = new List<BubbleSprite>();
             numOfBubbles = 9;
-            numOfColours = 3;
+            numOfColours = 1;
 
-            int rowsToClear = 1;       
+            int rowsToClear = 1;
             int halfOfBubbles = numOfBubbles / 2;               //  subtracting one so that the first one is placed in the right position            
             float middle = graphics.PreferredBackBufferWidth / 2;
             float horizontalHalfLength = numOfBubbles * bubbleWidth / 2;
@@ -156,22 +156,30 @@ namespace PuzzleBobble
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
                 this.Exit();
 
-            foreach (BubbleSprite bs in bubbleList)
-            {
-                if (shoot.Collides(bs))
-                {
-                    RepositionBubble();
-                    ExplodeBubble();
-                    CreateShootBubble();
-                    break;
-                }
-            }
 
             if (isShot && shoot.velocity.Y == 0 && shoot.velocity.X == 0)
             {
                 RepositionBubble();
+                ExplodeBubble();
                 CreateShootBubble();
             }
+            else
+            {
+                foreach (BubbleSprite bs in bubbleList)
+                {
+                    if (shoot.Collides(bs))
+                    {
+                        RepositionBubble();
+                        ExplodeBubble();
+                        test();
+                        CreateShootBubble();
+                        break;
+                    }
+                }
+            }
+            
+
+            
 
             foreach (BubbleSprite bs in bubbleList)
             {
@@ -241,9 +249,9 @@ namespace PuzzleBobble
 
         private float RepositionXValue(float yPos, out float xShift)
         {
-            float xPos;            
+            float xPos;
             xShift = bubbleWidth / 2;
-            
+
             if (yPos % 2 == 1)
                 xPos = (shoot.position.X - bubblePositionAdjustment - xShift) / bubbleWidth;
             else
@@ -263,7 +271,7 @@ namespace PuzzleBobble
 
             if (xRemainder >= 0.5)
             {
-                xPos = (float)Math.Ceiling(xPos);                
+                xPos = (float)Math.Ceiling(xPos);
             }
             else
             {
@@ -303,7 +311,7 @@ namespace PuzzleBobble
                     bubbleList.Remove(bs);
                 }
             }
-            // with the row and col of the shoot bubble, can check the 4 possible bubbles that touch shoot
+
 
             //BubbleSprite[] sameColours = LocateColouredBalls().ToArray<BubbleSprite>();
             //// Check for these four vectors:
@@ -316,6 +324,38 @@ namespace PuzzleBobble
             //}
 
 
+        }
+
+
+        private void test()
+        {
+            if (bubbleList.Count > 0)
+            {
+                BubbleSprite[][] bubbleLayout = MapBubbleLayout();
+                List<BubbleSprite> fall = new List<BubbleSprite>();
+                for (int i = bubbleLayout.GetLength(0) - 1; i > 0; i--)
+                {
+                    for (int j = 0; j < bubbleLayout[i].Length; j++)
+                    {
+                        if (bubbleLayout[i][j] != null)
+                        {
+                            List<BubbleSprite> bubblePath = new List<BubbleSprite>();
+                            bool isHanging = false;
+                            DropHangingBubbles(bubbleLayout, bubbleLayout[i][j], bubblePath, ref isHanging);
+                            if (!isHanging)
+                            {
+                                fall.Add(bubbleLayout[i][j]);
+                            }
+                        }
+
+                    }
+                }
+
+                foreach (BubbleSprite bs in fall)
+                {
+                    bs.velocity = new Vector2(0.0f, 5.0f);
+                }
+            }
         }
 
         private void CheckAdjacentBubbles(BubbleSprite[][] bubbleLayout, BubbleSprite bs, List<BubbleSprite> bubbleChain)
@@ -347,7 +387,7 @@ namespace PuzzleBobble
                 if (col > 0 && col < (numOfBubbles - 2))
                 {
                     //  Check Left
-                    
+
                     if (bubbleLayout[row][col - 1] != null)
                     {
                         if (bubbleLayout[row][col - 1].colour == bs.colour && !bubbleChain.Contains(bubbleLayout[row][col - 1]))
@@ -651,9 +691,267 @@ namespace PuzzleBobble
             }
         }
 
-        private void DropHangingBubbles()
+        /// <summary>
+        /// The way this will be implemented is that it will check each bubble: if there's a path where it reaches the top, it is still hanging.
+        /// </summary>
+        /// <param name="explodedBubbles"></param>
+        /// <param name="bubbleLayout"></param>
+        /// <param name="bs"></param>
+        private void DropHangingBubbles(BubbleSprite[][] bubbleLayout, BubbleSprite bs, List<BubbleSprite> bubblePath, ref bool isHanging)
         {
 
+            int row = (int)(bs.position.Y / bubbleHeight);
+            int col;
+
+            if (row % 2 == 1)
+            {
+                float adjustedXPos = bs.position.X - bubblePositionAdjustment - (bubbleWidth / 2);
+                col = (int)(adjustedXPos / bubbleWidth);
+            }
+            else
+            {
+                float adjustedXPos = bs.position.X - bubblePositionAdjustment;
+                col = (int)(adjustedXPos / bubbleWidth);
+            }
+
+            // Made it to the top row
+            if (row == 0)
+            {
+                isHanging = true;
+                return;
+            }
+
+            //  Checking rules for odd rows
+            if (row % 2 == 1)
+            {
+                //  Check Middle Bubbles
+                if (col > 0 && col < (numOfBubbles - 2))
+                {
+                    //  Check Left
+
+                    if (bubbleLayout[row][col - 1] != null)
+                    {
+                        if (bubbleLayout[row][col - 1] != null && !bubblePath.Contains(bubbleLayout[row][col - 1]))
+                        {
+                            bubblePath.Add(bubbleLayout[row][col - 1]);
+                            DropHangingBubbles(bubbleLayout, bubbleLayout[row][col - 1], bubblePath, ref isHanging);
+                        }
+                    }
+
+                    //  Check Right
+                    if (bubbleLayout[row][col + 1] != null)
+                    {
+                        if (bubbleLayout[row][col + 1] != null && !bubblePath.Contains(bubbleLayout[row][col + 1]))
+                        {
+                            bubblePath.Add(bubbleLayout[row][col + 1]);
+                            DropHangingBubbles(bubbleLayout, bubbleLayout[row][col + 1], bubblePath, ref isHanging);
+                        }
+                    }
+
+                    // the very top row, therefore there is nothing to look at top
+                    if (row != 0)
+                    {
+                        //  Check Top Left
+                        if (bubbleLayout[row - 1][col] != null)
+                        {
+                            if (bubbleLayout[row - 1][col] != null && !bubblePath.Contains(bubbleLayout[row - 1][col]))
+                            {
+                                bubblePath.Add(bubbleLayout[row - 1][col]);
+                                DropHangingBubbles(bubbleLayout, bubbleLayout[row - 1][col], bubblePath, ref isHanging);
+                            }
+                        }
+
+                        //  Check Top Right
+                        if (bubbleLayout[row - 1][col + 1] != null)
+                        {
+                            if (bubbleLayout[row - 1][col + 1] != null && !bubblePath.Contains(bubbleLayout[row - 1][col + 1]))
+                            {
+                                bubblePath.Add(bubbleLayout[row - 1][col + 1]);
+                                DropHangingBubbles(bubbleLayout, bubbleLayout[row - 1][col + 1], bubblePath, ref isHanging);
+                            }
+                        }
+                    }
+                }
+
+                //  Check the leftmost ball
+                else if (col == 0)
+                {
+                    //  Check Right
+                    if (bubbleLayout[row][col + 1] != null)
+                    {
+                        if (bubbleLayout[row][col + 1] != null && !bubblePath.Contains(bubbleLayout[row][col + 1]))
+                        {
+                            bubblePath.Add(bubbleLayout[row][col + 1]);
+                            DropHangingBubbles(bubbleLayout, bubbleLayout[row][col + 1], bubblePath, ref isHanging);
+                        }
+                    }
+
+                    if (row != 0)   // the very top row, therefore there is nothing to look at top
+                    {
+                        //  Check Top Left
+                        if (bubbleLayout[row - 1][col] != null)
+                        {
+                            if (bubbleLayout[row - 1][col] != null && !bubblePath.Contains(bubbleLayout[row - 1][col]))
+                            {
+                                bubblePath.Add(bubbleLayout[row - 1][col]);
+                                DropHangingBubbles(bubbleLayout, bubbleLayout[row - 1][col], bubblePath, ref isHanging);
+                            }
+                        }
+                        //  Check Top Right
+                        if (bubbleLayout[row - 1][col + 1] != null)
+                        {
+                            if (bubbleLayout[row - 1][col + 1] != null && !bubblePath.Contains(bubbleLayout[row - 1][col + 1]))
+                            {
+                                bubblePath.Add(bubbleLayout[row - 1][col + 1]);
+                                DropHangingBubbles(bubbleLayout, bubbleLayout[row - 1][col + 1], bubblePath, ref isHanging);
+                            }
+                        }
+                    }
+                }
+
+                //  Check the rightmost ball
+                else if (col == (numOfBubbles - 2))
+                {
+                    //  Check Left
+                    if (bubbleLayout[row][col - 1] != null)
+                    {
+                        if (bubbleLayout[row][col - 1] != null && !bubblePath.Contains(bubbleLayout[row][col - 1]))
+                        {
+                            bubblePath.Add(bubbleLayout[row][col - 1]);
+                            DropHangingBubbles(bubbleLayout, bubbleLayout[row][col - 1], bubblePath, ref isHanging);
+                        }
+                    }
+
+                    if (row != 0)   // the very top row, therefore there is nothing to look at top
+                    {
+                        //  Check Top Left
+                        if (bubbleLayout[row - 1][col] != null)
+                        {
+                            if (bubbleLayout[row - 1][col] != null && !bubblePath.Contains(bubbleLayout[row - 1][col]))
+                            {
+                                bubblePath.Add(bubbleLayout[row - 1][col]);
+                                DropHangingBubbles(bubbleLayout, bubbleLayout[row - 1][col], bubblePath, ref isHanging);
+                            }
+                        }
+                        //  Check Top Right
+                        if (bubbleLayout[row - 1][col + 1] != null)
+                        {
+                            if (bubbleLayout[row - 1][col + 1] != null && !bubblePath.Contains(bubbleLayout[row - 1][col + 1]))
+                            {
+                                bubblePath.Add(bubbleLayout[row - 1][col + 1]);
+                                DropHangingBubbles(bubbleLayout, bubbleLayout[row - 1][col + 1], bubblePath, ref isHanging);
+                            }
+                        }
+                    }
+                }
+            }
+
+
+            //  Checking rules for even rows
+            else
+            {
+                //  Check middle balls
+                if (col > 0 && col < (numOfBubbles - 1))
+                {
+                    //  Check Left
+                    if (bubbleLayout[row][col - 1] != null)
+                    {
+                        if (bubbleLayout[row][col - 1] != null && !bubblePath.Contains(bubbleLayout[row][col - 1]))
+                        {
+                            bubblePath.Add(bubbleLayout[row][col - 1]);
+                            DropHangingBubbles(bubbleLayout, bubbleLayout[row][col - 1], bubblePath, ref isHanging);
+                        }
+                    }
+
+                    //  Check Right
+                    if (bubbleLayout[row][col + 1] != null)
+                    {
+                        if (bubbleLayout[row][col + 1] != null && !bubblePath.Contains(bubbleLayout[row][col + 1]))
+                        {
+                            bubblePath.Add(bubbleLayout[row][col + 1]);
+                            DropHangingBubbles(bubbleLayout, bubbleLayout[row][col + 1], bubblePath, ref isHanging);
+                        }
+                    }
+
+                    // the very top row, therefore there is nothing to look at top
+                    if (row != 0)
+                    {
+                        //  Check Top Left
+                        if (bubbleLayout[row - 1][col - 1] != null)
+                        {
+                            if (bubbleLayout[row - 1][col - 1] != null && !bubblePath.Contains(bubbleLayout[row - 1][col - 1]))
+                            {
+                                bubblePath.Add(bubbleLayout[row - 1][col - 1]);
+                                DropHangingBubbles(bubbleLayout, bubbleLayout[row - 1][col - 1], bubblePath, ref isHanging);
+                            }
+                        }
+
+                        //  Check Top Right
+                        if (bubbleLayout[row - 1][col] != null)
+                        {
+                            if (bubbleLayout[row - 1][col] != null && !bubblePath.Contains(bubbleLayout[row - 1][col]))
+                            {
+                                bubblePath.Add(bubbleLayout[row - 1][col]);
+                                DropHangingBubbles(bubbleLayout, bubbleLayout[row - 1][col], bubblePath, ref isHanging);
+                            }
+                        }
+                    }
+                }
+
+                //  Check the leftmost ball
+                else if (col == 0)
+                {
+                    //  Check Right
+                    if (bubbleLayout[row][col + 1] != null)
+                    {
+                        if (bubbleLayout[row][col + 1] != null && !bubblePath.Contains(bubbleLayout[row][col + 1]))
+                        {
+                            bubblePath.Add(bubbleLayout[row][col + 1]);
+                            DropHangingBubbles(bubbleLayout, bubbleLayout[row][col + 1], bubblePath, ref isHanging);
+                        }
+                    }
+
+                    if (row != 0)   // the very top row, therefore there is nothing to look at top
+                    {
+                        //  Check Top Right
+                        if (bubbleLayout[row - 1][col] != null)
+                        {
+                            if (bubbleLayout[row - 1][col] != null && !bubblePath.Contains(bubbleLayout[row - 1][col]))
+                            {
+                                bubblePath.Add(bubbleLayout[row - 1][col]);
+                                DropHangingBubbles(bubbleLayout, bubbleLayout[row - 1][col], bubblePath, ref isHanging);
+                            }
+                        }
+                    }
+                }
+
+                //  Check the rightmost ball
+                else if (col == (numOfBubbles - 1))
+                {
+                    //  Check Left
+                    if (bubbleLayout[row][col - 1] != null)
+                    {
+                        if (bubbleLayout[row][col - 1] != null && !bubblePath.Contains(bubbleLayout[row][col - 1]))
+                        {
+                            bubblePath.Add(bubbleLayout[row][col - 1]);
+                            DropHangingBubbles(bubbleLayout, bubbleLayout[row][col - 1], bubblePath, ref isHanging);
+                        }
+                    }
+
+                    if (row != 0)   // the very top row, therefore there is nothing to look at top
+                    {
+                        //  Check Top Left
+                        if (bubbleLayout[row - 1][col - 1] != null)
+                        {
+                            if (bubbleLayout[row - 1][col - 1] != null && !bubblePath.Contains(bubbleLayout[row - 1][col - 1]))
+                            {
+                                bubblePath.Add(bubbleLayout[row - 1][col - 1]);
+                                DropHangingBubbles(bubbleLayout, bubbleLayout[row - 1][col - 1], bubblePath, ref isHanging);
+                            }
+                        }
+                    }
+                }
+            }
         }
 
 
@@ -721,9 +1019,9 @@ namespace PuzzleBobble
             return reconstruction;
 
         }
-        
-        
-        
+
+
+
         /// <summary>
         /// Creates a new bubble to shoot
         /// </summary>
