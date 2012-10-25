@@ -13,23 +13,24 @@ namespace PuzzleBobble
         public Texture2D texture { get; set; }
         public Vector2 position { get; set; }
         public Vector2 size { get; set; }
-        public Vector2 center { get { return (size / 2); } }
+        public Vector2 center { get { return size / 2; } }
         public float rotation { get; set; }
-
+        public float angle { get; set; }
         public NeedleSprite(Texture2D newTexture, Vector2 newPosition, Vector2 newSize)
         {
             texture = newTexture;
             position = newPosition;
-            size = newSize;
+            size = newSize;            
         }
 
         public void TiltNeedle(float newRotation)
         {
             float oldRotation = rotation;
+            float limit = MathHelper.Pi / 3;
             rotation += newRotation;
-            if (rotation > 1.3f || rotation < -1.3f) // prevents the needle from pointing down
+            if (rotation > limit || rotation < -limit) // prevents the needle from pointing down
             {
-                rotation = oldRotation; // positions the needle at an angle
+                rotation = oldRotation; // positions the needle at an angle                
             }
 
             // Need to actually have some sort of direction that corresponds to the movement.
