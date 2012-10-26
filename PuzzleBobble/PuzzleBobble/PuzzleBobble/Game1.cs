@@ -40,13 +40,16 @@ namespace PuzzleBobble
 
 
         //  Textures
-        Texture2D border;
-        Texture2D bubbles;      // Contains all the bubble textures
-        Texture2D needleFrame;  // Frame for the needle texture
+        Texture2D bag;
         Texture2D background;   // different backgrounds for different levels
+        Texture2D border;       // Side border
+        Texture2D bubbles;      // Contains all the bubble textures
+        Texture2D losingLine;   // If balls pass this line, user loses
+        Texture2D needleFrame;  // Frame for the needle texture
+        
 
-        BubbleSprite loadShot;     // Bubble that will be shot
-        BubbleSprite nextShot;
+        BubbleSprite loadShot;      // Bubble on the needle
+        BubbleSprite nextShot;      // Bubble beside the bag
         NeedleSprite needle;    // The needle that determines the direction for shooting
 
         SpriteFont font;
@@ -56,11 +59,14 @@ namespace PuzzleBobble
         float timer; //10 second timer
 
         // Dimensions
+        const float bagWidth = 57f;
+        const float bagHeight = 36f;
+
         const float needleWidth = 22f;
         const float needleHeight = 55f;
 
-        const float needleFrameWidth = 74f * 1.2f;
-        const float needleFrameHeight = 46f * 1.2f;
+        const float needleFrameWidth = 74f;
+        const float needleFrameHeight = 46f;
 
         const float bubbleHeight = 16f * 2.0f;
         const float bubbleWidth = 16f * 2.0f;
@@ -129,6 +135,7 @@ namespace PuzzleBobble
                     break;
             }
 
+            CreateShootBubble();
             CreateShootBubble();
 
         }
@@ -218,9 +225,11 @@ namespace PuzzleBobble
             //spriteBatch = new SpriteBatch(GraphicsDevice);
 
             // TODO: use this.Content to load your game content here
+            bag = Content.Load<Texture2D>("Bag");
             background = Content.Load<Texture2D>("level1");
-            border = Content.Load<Texture2D>("SideBorder");
+            border = Content.Load<Texture2D>("SideBorder");            
             bubbles = Content.Load<Texture2D>("ShinyBubbles16");
+            losingLine = Content.Load<Texture2D>("LosingLine");
             needleFrame = Content.Load<Texture2D>("NeedleFrame");
             needle = new NeedleSprite(Content.Load<Texture2D>("Needle"), new Vector2(xPosNeedle, yPosNeedle), new Vector2(needleWidth, needleHeight), new Vector2(graphics.PreferredBackBufferWidth, graphics.PreferredBackBufferHeight));
             font = Content.Load<SpriteFont>("Score");
@@ -249,6 +258,7 @@ namespace PuzzleBobble
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
                 this.Exit();
 
+            // Check the current game state
             switch (currentGameState)
             {
                 case GameState.Level1:
@@ -269,13 +279,10 @@ namespace PuzzleBobble
                     break;
             }
 
-            if (timer <= 0.0f)
-            {
-                Shoot();
-            }
 
             if (isShot)
             {
+                loadShot.Move();    // Shot will only move if it's been shot
 
                 if (loadShot.velocity.Y == 0 && loadShot.velocity.X == 0)
                 {
@@ -299,28 +306,26 @@ namespace PuzzleBobble
             }
             else
             {
+                if (numberOfShots == 0)
+                {
+                    DropCeiling();
+                }
                 timer -= (float)gameTime.ElapsedGameTime.TotalMilliseconds;
             }
 
-            if (numberOfShots == 0)
-            {
-                DropCeiling();
-            }
-            foreach (BubbleSprite bs in bubbleList)
-            {
-                bs.Move();
-            }
+            
 
-            foreach (BubbleSprite bs in droppingBubbles)
-            {
-                bs.Move();
-            }
-
-
-
-            loadShot.Move();
-            // TODO: Add your update logic here
+            //  Removes balls that are no longer in sight
+            ClearDroppingBubbles();     
+            
+            //  All keyboard actions
             KeyboardActions();
+
+            // Check Timer
+            if (timer <= 0.0f)
+            {
+                Shoot();
+            }
 
             base.Update(gameTime);
         }
@@ -468,6 +473,7 @@ namespace PuzzleBobble
         }
 
 
+        
         /// <summary>
         /// Checks to see if the shot ball is connected to three or more matching bubbles
         /// </summary>
@@ -493,49 +499,11 @@ namespace PuzzleBobble
 
 
         /// <summary>
-        /// Drops all hanging bubbles. Score is calculated as follows:
-        /// 2^(Number of Hanging balls) * 10
+        /// Finds all the bubbles that have the same colour as the passed bubble
         /// </summary>
-        private int LocateHangingBubbles()
-        {
-            List<BubbleSprite> hangingBubbles = new List<BubbleSprite>();
-            if (bubbleList.Count > 0)
-            {
-                BubbleSprite[][] bubbleLayout = MapBubbleLayout();
-                for (int i = bubbleLayout.GetLength(0) - 1; i > 0; i--)
-                {
-                    for (int j = 0; j < bubbleLayout[i].Length; j++)
-                    {
-                        bool isHanging = false;
-                        if (bubbleLayout[i][j] != null)
-                        {
-                            List<BubbleSprite> bubblePath = new List<BubbleSprite>();
-                            FindBubblePath(bubbleLayout, bubbleLayout[i][j], bubblePath, ref isHanging);
-                            if (!isHanging)
-                            {
-                                hangingBubbles.Add(bubbleLayout[i][j]);
-                            }
-                        }
-
-                    }
-                }
-                if (hangingBubbles.Count > 0)
-                {
-                    foreach (BubbleSprite bs in hangingBubbles)
-                    {
-                        bubbleList.Remove(bs);
-                        bs.isFalling = true;
-                        bs.velocity = new Vector2(0.0f, 10.0f);
-                    }
-                }
-            }
-
-            if (hangingBubbles.Count > 0)
-                droppingBubbles.AddRange(hangingBubbles);
-
-            return hangingBubbles.Count;
-        }
-
+        /// <param name="bubbleLayout"></param>
+        /// <param name="bs"></param>
+        /// <param name="bubbleChain"></param>
         private void FindMatchingBubbles(BubbleSprite[][] bubbleLayout, BubbleSprite bs, List<BubbleSprite> bubbleChain)
         {
             int row = (int)((bs.position.Y - (ceiling * bubbleHeight)) / bubbleHeight);
@@ -869,6 +837,77 @@ namespace PuzzleBobble
             }
         }
 
+
+        /// <summary>
+        /// Clears the dropped bubbles from memory once they fall outside of the screen
+        /// </summary>
+        private void ClearDroppingBubbles()
+        {
+            List<BubbleSprite> bubbleToRemove = new List<BubbleSprite>();
+            foreach (BubbleSprite bs in droppingBubbles)
+            {
+                if (bs.position.Y > graphics.PreferredBackBufferHeight)
+                {
+                    bubbleToRemove.Add(bs);
+                }
+                else
+                {
+                    bs.Move();
+                }
+            }
+
+            foreach (BubbleSprite bs in bubbleToRemove)
+            {
+                droppingBubbles.Remove(bs);
+            }
+        }
+
+        /// <summary>
+        /// Drops all hanging bubbles. Score is calculated as follows:
+        /// 2^(Number of Hanging balls) * 10
+        /// </summary>
+        private int LocateHangingBubbles()
+        {
+            List<BubbleSprite> hangingBubbles = new List<BubbleSprite>();
+            if (bubbleList.Count > 0)
+            {
+                BubbleSprite[][] bubbleLayout = MapBubbleLayout();
+                for (int i = bubbleLayout.GetLength(0) - 1; i > 0; i--)
+                {
+                    for (int j = 0; j < bubbleLayout[i].Length; j++)
+                    {
+                        bool isHanging = false;
+                        if (bubbleLayout[i][j] != null)
+                        {
+                            List<BubbleSprite> bubblePath = new List<BubbleSprite>();
+                            FindBubblePath(bubbleLayout, bubbleLayout[i][j], bubblePath, ref isHanging);
+                            if (!isHanging)
+                            {
+                                hangingBubbles.Add(bubbleLayout[i][j]);
+                            }
+                        }
+
+                    }
+                }
+                if (hangingBubbles.Count > 0)
+                {
+                    foreach (BubbleSprite bs in hangingBubbles)
+                    {
+                        bubbleList.Remove(bs);
+                        bs.isFalling = true;
+                        bs.velocity = new Vector2(0.0f, 10.0f);
+                    }
+                }
+            }
+
+            if (hangingBubbles.Count > 0)
+                droppingBubbles.AddRange(hangingBubbles);
+
+            return hangingBubbles.Count;
+        }
+
+        
+
         /// <summary>
         /// The way this will be implemented is that it will check each bubble: if there's a path where it reaches the top, it is still hanging.
         /// </summary>
@@ -1198,9 +1237,15 @@ namespace PuzzleBobble
         /// </summary>
         private void CreateShootBubble()
         {
+            Vector2 needlePosition = new Vector2(graphics.PreferredBackBufferWidth / 2 - bubbleWidth / 2, graphics.PreferredBackBufferHeight - (needleHeight / 2) - bubbleHeight / 2);
+            Vector2 bagPosition = new Vector2(graphics.PreferredBackBufferWidth / 2 - (bubbleWidth * 2.0f), graphics.PreferredBackBufferHeight - bubbleHeight);
+
+            if (nextShot != null)
+            {
+                loadShot = new BubbleSprite(bubbles, needlePosition, new Vector2(bubbleWidth, bubbleHeight), nextShot.colour);                
+            }
             Random randomNums = new Random();
-            loadShot = new BubbleSprite(bubbles, new Vector2(graphics.PreferredBackBufferWidth / 2 - bubbleWidth / 2, graphics.PreferredBackBufferHeight - (needleHeight / 2) - bubbleHeight / 2),
-               new Vector2(bubbleWidth, bubbleHeight), randomNums.Next(numOfColours));//, graphics.PreferredBackBufferWidth, graphics.PreferredBackBufferHeight);            
+            nextShot = new BubbleSprite(bubbles, bagPosition, new Vector2(bubbleWidth, bubbleHeight), randomNums.Next(numOfColours));
             isShot = false;
         }
 
@@ -1266,7 +1311,9 @@ namespace PuzzleBobble
 
             Rectangle rightBorderRectangle = new Rectangle((int)(BubbleSprite.horizontalBoundaries.Y), 0, 10, graphics.PreferredBackBufferHeight);
             spriteBatch.Draw(border, rightBorderRectangle, Color.White);
-            //spriteBatch.Draw()
+
+            Rectangle losingRectangle = new Rectangle((int)(BubbleSprite.horizontalBoundaries.X), (int)(bubbleHeight * 12), (int)(BubbleSprite.horizontalBoundaries.Y - BubbleSprite.horizontalBoundaries.X), 8);
+            spriteBatch.Draw(losingLine, losingRectangle, Color.White);
 
             //  Draw Ceiling
             if (ceiling > 0)
@@ -1293,15 +1340,21 @@ namespace PuzzleBobble
                 bs.Draw(spriteBatch);
             }
 
-            //  Needle Frame            
-            //spriteBatch.Draw(needleFrame, new Vector2(graphics.PreferredBackBufferWidth / 2 - needleFrameWidth / 2, graphics.PreferredBackBufferHeight - needleFrameHeight), Color.White);
-            spriteBatch.Draw(needleFrame, new Vector2(graphics.PreferredBackBufferWidth / 2 - needleFrameWidth / 2, graphics.PreferredBackBufferHeight - needleFrameHeight), null, Color.White, 0f, new Vector2(0f, 0f), 1.2f, SpriteEffects.None, 0.0f);
+            //  Bag
+            spriteBatch.Draw(bag, new Vector2(graphics.PreferredBackBufferWidth / 2 - needleFrameWidth / 2 - 50 - bagWidth, graphics.PreferredBackBufferHeight - (bagHeight * 1.2f)), null, Color.White, 0f, new Vector2(0f, 0f), 1.2f, SpriteEffects.None, 0.0f);
+            
+            //  Needle Frame                        
+            spriteBatch.Draw(needleFrame, new Vector2(graphics.PreferredBackBufferWidth / 2 - needleFrameWidth / 2, graphics.PreferredBackBufferHeight - (needleFrameHeight * 1.2f)), null, Color.White, 0f, new Vector2(0f, 0f), 1.2f, SpriteEffects.None, 0.0f);
 
             //  Needle
             needle.Draw(spriteBatch);
 
-            // The ball to be shot
+            // Next bubble to be loaded
+            nextShot.Draw(spriteBatch);
+
+            // The bubble on the needle
             loadShot.Draw(spriteBatch);
+
 
             //  Drawing the score
             spriteBatch.DrawString(font, String.Format("Score: {0}", score), new Vector2(10, 10), Color.Black);

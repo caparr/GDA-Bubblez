@@ -21,7 +21,6 @@ namespace PuzzleBobble
         public bool isFalling { get; set; }
 
         Rectangle sourceRect;
-        Vector2 origin;
 
         public BubbleSprite (Texture2D newTexture, Vector2 newPosition, Vector2 newSize, int newColour)//, float leftBoundary, float rightBoundary)
         {
@@ -51,9 +50,8 @@ namespace PuzzleBobble
             //  checking right boundary
             if (position.X + size.X + velocity.X > horizontalBoundaries.Y)
                 velocity = new Vector2(-velocity.X, velocity.Y);
-            //  checking bottom boundary
-            //  TODO
-            //if (position.Y + size.Y + velocity.Y > horizontalBoundaries.Y)
+            //  checking bottom boundary LOSING CONDITION
+            //if (position.Y + size.Y + velocity.Y > size.Y )
             //    velocity = new Vector2(velocity.X, -velocity.Y); // need to add some sort of invisible condition when it reaches here
             //  checking left boundary
             if (position.X + velocity.X < horizontalBoundaries.X)
@@ -68,8 +66,7 @@ namespace PuzzleBobble
         // To make something invisible, multiple Color.White by 0.0f
         public void Draw (SpriteBatch spriteBatch)
         {            
-            sourceRect = new Rectangle(0, colour * 16, 16, 16); // Will always be 16 since that's the dimension in the spritesheet
-            origin = new Vector2(sourceRect.Width / 2, sourceRect.Height / 2);
+            sourceRect = new Rectangle(0, colour * 16, 16, 16); // Will always be 16 since that's the dimension in the spritesheet            
             //spriteBatch.Draw(texture, position, sourceRect, Color.White);
             spriteBatch.Draw(texture, position, sourceRect, Color.White, 0f, new Vector2(0f, 0f), 2.0f, SpriteEffects.None, 0.0f);
         }
