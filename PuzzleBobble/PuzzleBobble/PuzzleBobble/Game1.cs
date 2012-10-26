@@ -33,28 +33,37 @@ namespace PuzzleBobble
             End,
         }
 
-        GameState currentGameState = GameState.Level2;
+        GameState currentGameState = GameState.Level1;
 
         List<BubbleSprite> bubbleList;      // Contains all the bubbles that need to be knocked down
         List<BubbleSprite> droppingBubbles; // Gives the update enough time to drop the balls before making them disappear
+
+
+        //  Textures
+        Texture2D border;
         Texture2D bubbles;      // Contains all the bubble textures
         Texture2D needleFrame;  // Frame for the needle texture
         Texture2D background;   // different backgrounds for different levels
-        BubbleSprite shoot;     // Bubble that will be sent to shoot        
+        
+        BubbleSprite loadShot;     // Bubble that will be shot
+        BubbleSprite nextShot;
         NeedleSprite needle;    // The needle that determines the direction for shooting
 
         SpriteFont font;
         int score;
+        int numberOfShots;
+        int ceiling;
+        float timer; //10 second timer
 
         // Dimensions
         const float needleWidth = 22f;
         const float needleHeight = 55f;
 
-        const float needleFrameWidth = 74f;
-        const float needleFrameHeight = 46f;
+        const float needleFrameWidth = 74f * 1.2f;
+        const float needleFrameHeight = 46f * 1.2f;
 
-        const float bubbleHeight = 22f * 1.0f;
-        const float bubbleWidth = 22f * 1.0f;
+        const float bubbleHeight = 16f * 2.0f;
+        const float bubbleWidth = 16f * 2.0f;
 
         int numOfBubbles;
         int numOfColours;
@@ -66,8 +75,8 @@ namespace PuzzleBobble
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
 
-            graphics.PreferredBackBufferWidth = 400;
-            graphics.PreferredBackBufferHeight = 320; // 11 rows of balls + needle height + 1 ball to pass the line to lose the game
+            graphics.PreferredBackBufferWidth = 800;
+            graphics.PreferredBackBufferHeight = (int)(12.0f * bubbleHeight + needleHeight);//480; // 11 rows of balls + needle height + 1 ball to pass the line to lose the game
 
         }
 
@@ -85,7 +94,14 @@ namespace PuzzleBobble
             spriteBatch = new SpriteBatch(this.graphics.GraphicsDevice);
             bubbleList = new List<BubbleSprite>();
             droppingBubbles = new List<BubbleSprite>();
+
+            //  Statistics
+            timer = 10000.0f; //10 second timer
             score = 0;
+            numberOfShots = 8;
+            ceiling = 0;
+
+            //  Bubble Conditions
             numOfBubbles = 8;
             numOfColours = 5;
 
@@ -119,7 +135,7 @@ namespace PuzzleBobble
 
         private void Level1()
         {
-            numOfColours = 1;       //  Set how many colours will be available in this level
+            numOfColours = 4;       //  Set how many colours will be available in this level
             int rowsToClear = 4;    //  Number of Rows to clear            
             int colour;             //  The colour of the ball that will be generated
 
@@ -136,7 +152,7 @@ namespace PuzzleBobble
                             colour = (colour + 1) % numOfColours;
                         }
 
-                        BubbleSprite bubble = new BubbleSprite(bubbles, new Vector2(bubblePositionAdjustment + bubbleWidth / 2 + col * bubbleWidth, row * bubbleHeight), colour);
+                        BubbleSprite bubble = new BubbleSprite(bubbles, new Vector2(bubblePositionAdjustment + bubbleWidth / 2 + col * bubbleWidth, row * bubbleHeight), new Vector2(bubbleWidth, bubbleHeight), colour);
                         bubbleList.Add(bubble);
                     }
                 }
@@ -148,7 +164,7 @@ namespace PuzzleBobble
                         {
                             colour = (colour + 1) % numOfColours;
                         }
-                        BubbleSprite bubble = new BubbleSprite(bubbles, new Vector2(bubblePositionAdjustment + col * bubbleWidth, row * bubbleHeight), colour); 
+                        BubbleSprite bubble = new BubbleSprite(bubbles, new Vector2(bubblePositionAdjustment + col * bubbleWidth, row * bubbleHeight), new Vector2(bubbleWidth, bubbleHeight), colour);
                         bubbleList.Add(bubble);
                     }
                 }
@@ -168,7 +184,7 @@ namespace PuzzleBobble
                 if (row % 2 == 1)
                 {
 
-                    BubbleSprite bubble = new BubbleSprite(bubbles, new Vector2(bubblePositionAdjustment + bubbleWidth / 2 + (numOfBubbles / 2 - 1) * bubbleWidth, row * bubbleHeight), colour);
+                    BubbleSprite bubble = new BubbleSprite(bubbles, new Vector2(bubblePositionAdjustment + bubbleWidth / 2 + (numOfBubbles / 2 - 1) * bubbleWidth, row * bubbleHeight), new Vector2(bubbleWidth, bubbleHeight), colour);
                     bubbleList.Add(bubble);
 
                 }
@@ -176,11 +192,11 @@ namespace PuzzleBobble
                 {
                     if (row == 0)
                     {
-                        BubbleSprite extraBubble = new BubbleSprite(bubbles, new Vector2(bubblePositionAdjustment + (numOfBubbles / 2) * bubbleWidth, row * bubbleHeight), colour);
+                        BubbleSprite extraBubble = new BubbleSprite(bubbles, new Vector2(bubblePositionAdjustment + (numOfBubbles / 2) * bubbleWidth, row * bubbleHeight), new Vector2(bubbleWidth, bubbleHeight), colour);
                         bubbleList.Add(extraBubble);
                     }
 
-                    BubbleSprite bubble = new BubbleSprite(bubbles, new Vector2(bubblePositionAdjustment + (numOfBubbles / 2 - 1) * bubbleWidth, row * bubbleHeight), colour);
+                    BubbleSprite bubble = new BubbleSprite(bubbles, new Vector2(bubblePositionAdjustment + (numOfBubbles / 2 - 1) * bubbleWidth, row * bubbleHeight), new Vector2(bubbleWidth, bubbleHeight), colour);
                     bubbleList.Add(bubble);
 
                 }
@@ -203,10 +219,10 @@ namespace PuzzleBobble
 
             // TODO: use this.Content to load your game content here
             background = Content.Load<Texture2D>("level1");
-            bubbles = Content.Load<Texture2D>("Bubbles");
+            border = Content.Load<Texture2D>("SideBorder");
+            bubbles = Content.Load<Texture2D>("ShinyBubbles16");
             needleFrame = Content.Load<Texture2D>("NeedleFrame");
-            needle = new NeedleSprite(Content.Load<Texture2D>("Needle"), new Vector2(xPosNeedle, yPosNeedle), new Vector2(needleWidth, needleHeight));
-
+            needle = new NeedleSprite(Content.Load<Texture2D>("Needle"), new Vector2(xPosNeedle, yPosNeedle), new Vector2(needleWidth, needleHeight), new Vector2(graphics.PreferredBackBufferWidth, graphics.PreferredBackBufferHeight));            
             font = Content.Load<SpriteFont>("Score");
         }
 
@@ -252,9 +268,15 @@ namespace PuzzleBobble
                     break;
             }
 
+            if (timer <= 0.0f)
+            {
+                Shoot();
+            }
+
             if (isShot)
             {
-                if (shoot.velocity.Y == 0 && shoot.velocity.X == 0)
+
+                if (loadShot.velocity.Y == 0 && loadShot.velocity.X == 0)
                 {
                     RepositionBubble();
                     CheckScore();
@@ -264,7 +286,7 @@ namespace PuzzleBobble
                 {
                     foreach (BubbleSprite bs in bubbleList)
                     {
-                        if (shoot.Collides(bs))
+                        if (loadShot.Collides(bs))
                         {
                             RepositionBubble();
                             CheckScore();
@@ -273,6 +295,10 @@ namespace PuzzleBobble
                         }
                     }
                 }
+            }
+            else
+            {
+                timer -= (float)gameTime.ElapsedGameTime.TotalMilliseconds;
             }
 
             foreach (BubbleSprite bs in bubbleList)
@@ -286,7 +312,8 @@ namespace PuzzleBobble
             }
 
 
-            shoot.Move();
+
+            loadShot.Move();
             // TODO: Add your update logic here
             KeyboardActions();
 
@@ -304,18 +331,17 @@ namespace PuzzleBobble
                 {
                     // Arrow Keys
                     case Keys.Left:
-                        needle.TiltNeedle(-0.025f);
+                        needle.TiltNeedle(-0.028f);
                         break;
                     case Keys.Right:
-                        needle.TiltNeedle(0.025f);
+                        needle.TiltNeedle(0.028f);
                         break;
                     // Shoot
                     case Keys.Up:
                     case Keys.Space:
                         if (!isShot)
                         {
-                            shoot.velocity = new Vector2((float)Math.Cos(needle.rotation + MathHelper.Pi / 2) * -10f, (float)Math.Sin(needle.rotation + MathHelper.Pi / 2) * -10f);
-                            isShot = true;
+                            Shoot();
                         }
                         break;
                     case Keys.Escape:
@@ -329,72 +355,80 @@ namespace PuzzleBobble
         {
             float xShift;
 
-            float yPos = RepositionYValue();
-            float xPos = RepositionXValue(yPos, out xShift);
+            float yPos = RepositionRowValue();
+            float xPos = RepositionColumnValue(yPos, out xShift);
 
             if (yPos % 2 == 1)
             {
-                shoot.position = new Vector2(xPos * bubbleWidth + bubblePositionAdjustment + xShift, yPos * bubbleHeight);
+                loadShot.position = new Vector2(xPos * bubbleWidth + bubblePositionAdjustment + xShift, yPos * bubbleHeight);
             }
             else
             {
-                shoot.position = new Vector2(xPos * bubbleWidth + bubblePositionAdjustment, yPos * bubbleHeight);
+                loadShot.position = new Vector2(xPos * bubbleWidth + bubblePositionAdjustment, yPos * bubbleHeight);
             }
 
-            shoot.velocity = new Vector2(0.0f, 0.0f);
-            BubbleSprite attachedShot = shoot;
+            loadShot.velocity = new Vector2(0.0f, 0.0f);
+            BubbleSprite attachedShot = loadShot;
             bubbleList.Add(attachedShot);
 
         }
 
-        private float RepositionXValue(float yPos, out float xShift)
+        private float RepositionRowValue()
         {
-            float xPos;
+            float row = loadShot.position.Y / bubbleHeight;
+            float yRemainder = row % 1;
+
+            if (yRemainder >= 0.5)
+            {
+                row = (float)Math.Ceiling(row);
+            }
+            else
+            {
+                row = (float)Math.Floor(row);
+            }
+            return row;
+        }
+
+        private float RepositionColumnValue(float row, out float xShift)
+        {
+            float col;
             xShift = bubbleWidth / 2;
 
-            if (yPos % 2 == 1)
-                xPos = (shoot.position.X - bubblePositionAdjustment - xShift) / bubbleWidth;
+            if (row % 2 == 1)
+                col = (loadShot.position.X - bubblePositionAdjustment - xShift) / bubbleWidth;
             else
-                xPos = (shoot.position.X - bubblePositionAdjustment) / bubbleWidth;
+                col = (loadShot.position.X - bubblePositionAdjustment) / bubbleWidth;
 
-            float xRemainder = xPos % 1;
+            float xRemainder = col % 1;
 
-            if (xPos < 0)
+            if (col < 0)
             {
-                xPos += 1;
+                col += 1;
             }
 
-            if (xPos > numOfBubbles - 1)
+            if (col > numOfBubbles - 1)
             {
                 xShift = -xShift;
             }
 
             if (xRemainder >= 0.5)
             {
-                xPos = (float)Math.Ceiling(xPos);
+                col = (float)Math.Ceiling(col);
             }
             else
             {
-                xPos = (float)Math.Floor(xPos);
+                col = (float)Math.Floor(col);
             }
 
-            return xPos;
+            return col;
         }
 
-        private float RepositionYValue()
+        private void Shoot()
         {
-            float yPos = shoot.position.Y / bubbleHeight;
-            float yRemainder = yPos % 1;
-
-            if (yRemainder >= 0.5)
-            {
-                yPos = (float)Math.Ceiling(yPos);
-            }
-            else
-            {
-                yPos = (float)Math.Floor(yPos);
-            }
-            return yPos;
+            loadShot.velocity = new Vector2((float)Math.Cos(needle.rotation + MathHelper.Pi / 2) * -10f, (float)Math.Sin(needle.rotation + MathHelper.Pi / 2) * -10f);
+            numberOfShots--;
+            isShot = true;
+            timer = 10000.0f;
         }
 
 
@@ -424,7 +458,7 @@ namespace PuzzleBobble
             BubbleSprite[][] bubbleLayout = MapBubbleLayout();
             List<BubbleSprite> bubbleChain = new List<BubbleSprite>();
 
-            FindMatchingBubbles(bubbleLayout, shoot, bubbleChain);
+            FindMatchingBubbles(bubbleLayout, loadShot, bubbleChain);
 
             if (bubbleChain.Count > 2)
             {
@@ -1095,26 +1129,26 @@ namespace PuzzleBobble
         }
 
 
-        /// <summary>
-        /// Find all bubble sprites of the same colour and orders them in by greatest YPos followed by greatest XPos
-        /// </summary>
-        /// <returns></returns>
-        private List<BubbleSprite> LocateColouredBalls()
-        {
-            IComparer<BubbleSprite> comparer = new ComparingBubbleSprites();
+        ///// <summary>
+        ///// Find all bubble sprites of the same colour and orders them in by greatest YPos followed by greatest XPos
+        ///// </summary>
+        ///// <returns></returns>
+        //private List<BubbleSprite> LocateColouredBalls()
+        //{
+        //    IComparer<BubbleSprite> comparer = new ComparingBubbleSprites();
 
-            List<BubbleSprite> sameColour = new List<BubbleSprite>();
-            foreach (BubbleSprite bs in bubbleList)
-            {
-                if (bs.colour == shoot.colour)
-                {
-                    sameColour.Add(bs);
-                }
-            }
-            sameColour.Sort(comparer);
+        //    List<BubbleSprite> sameColour = new List<BubbleSprite>();
+        //    foreach (BubbleSprite bs in bubbleList)
+        //    {
+        //        if (bs.colour == loadShot.colour)
+        //        {
+        //            sameColour.Add(bs);
+        //        }
+        //    }
+        //    sameColour.Sort(comparer);
 
-            return sameColour;
-        }
+        //    return sameColour;
+        //}
 
 
         /// <summary>
@@ -1168,8 +1202,8 @@ namespace PuzzleBobble
         private void CreateShootBubble()
         {
             Random randomNums = new Random();
-            shoot = new BubbleSprite(bubbles, new Vector2(graphics.PreferredBackBufferWidth / 2 - bubbleWidth / 2, graphics.PreferredBackBufferHeight - (needleHeight / 2) - bubbleHeight / 2),
-                randomNums.Next(numOfColours));//, graphics.PreferredBackBufferWidth, graphics.PreferredBackBufferHeight);            
+            loadShot = new BubbleSprite(bubbles, new Vector2(graphics.PreferredBackBufferWidth / 2 - bubbleWidth / 2, graphics.PreferredBackBufferHeight - (needleHeight / 2) - bubbleHeight / 2),
+               new Vector2(bubbleWidth, bubbleHeight), randomNums.Next(numOfColours));//, graphics.PreferredBackBufferWidth, graphics.PreferredBackBufferHeight);            
             isShot = false;
         }
 
@@ -1187,7 +1221,7 @@ namespace PuzzleBobble
                 }
             }
 
-            numberOfRows = (int)(highestBubble) / 22 + 1;
+            numberOfRows = (int)(highestBubble - ceiling * bubbleHeight) / 22 + 1; // ceiling drops down every 8 bubble shot, so that needs to be considered for the number of rows
             return numberOfRows;
 
 
@@ -1207,23 +1241,28 @@ namespace PuzzleBobble
             spriteBatch.Begin();
 
             //  Drawing background depending on level
-            Rectangle screenRectangle = new Rectangle(0, 0, graphics.PreferredBackBufferWidth, graphics.PreferredBackBufferHeight);
+            Rectangle backgroundRectangle = new Rectangle(0, 0, graphics.PreferredBackBufferWidth, graphics.PreferredBackBufferHeight);
             switch (currentGameState)
             {
                 case GameState.Level1:  //  http://www.dreamstime.com/abstract-geometric-background-imagefree3425491
-                    spriteBatch.Draw(background, screenRectangle, Color.White * 0.5f);
+                    spriteBatch.Draw(background, backgroundRectangle, Color.White * 0.5f);
                     break;
                 case GameState.Level2:
-                    spriteBatch.Draw(background, screenRectangle, Color.White * 0.5f);
+                    spriteBatch.Draw(background, backgroundRectangle, Color.White * 0.5f);
                     break;
                 case GameState.End:
                     spriteBatch.DrawString(font, "You beat the game!\n Please press ESC to exit", new Vector2(100, 100), Color.Black);
                     break;
 
             }
-
+            
             //TODO
             //  Draw the borders
+            Rectangle leftBorderRectangle = new Rectangle((int)(BubbleSprite.horizontalBoundaries.X - 10), 0, 10, graphics.PreferredBackBufferHeight);
+            spriteBatch.Draw(border, leftBorderRectangle, Color.White);
+
+            Rectangle rightBorderRectangle = new Rectangle((int)(BubbleSprite.horizontalBoundaries.Y), 0, 10, graphics.PreferredBackBufferHeight);
+            spriteBatch.Draw(border, rightBorderRectangle, Color.White);
             //spriteBatch.Draw()
             //  Draw the boundary line
 
@@ -1243,16 +1282,23 @@ namespace PuzzleBobble
             }
 
             //  Needle Frame            
-            spriteBatch.Draw(needleFrame, new Vector2(graphics.PreferredBackBufferWidth / 2 - needleFrameWidth / 2, graphics.PreferredBackBufferHeight - needleFrameHeight), Color.White);
+            //spriteBatch.Draw(needleFrame, new Vector2(graphics.PreferredBackBufferWidth / 2 - needleFrameWidth / 2, graphics.PreferredBackBufferHeight - needleFrameHeight), Color.White);
+            spriteBatch.Draw(needleFrame, new Vector2(graphics.PreferredBackBufferWidth / 2 - needleFrameWidth / 2, graphics.PreferredBackBufferHeight - needleFrameHeight), null, Color.White, 0f, new Vector2(0f, 0f), 1.2f, SpriteEffects.None, 0.0f);
 
             //  Needle
             needle.Draw(spriteBatch);
 
             // The ball to be shot
-            shoot.Draw(spriteBatch);
+            loadShot.Draw(spriteBatch);
 
             //  Drawing the score
-            spriteBatch.DrawString(font, score.ToString(), new Vector2(50, 50), Color.Black);
+            spriteBatch.DrawString(font, String.Format("Score: {0}", score), new Vector2(10, 10), Color.Black);
+
+            //  Drawing the time left for the next autoshot
+            spriteBatch.DrawString(font, String.Format("{0:0.0}", timer / 1000.0f), new Vector2(10, 30), Color.Black);
+
+            //  Drawing the number of shots left until ceiling falls
+            spriteBatch.DrawString(font, String.Format("Shots Left: {0}", numberOfShots), new Vector2(10, 50), Color.Black);
 
             spriteBatch.End();
 
