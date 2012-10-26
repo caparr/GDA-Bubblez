@@ -59,7 +59,7 @@ namespace PuzzleBobble
             if (position.X + velocity.X < horizontalBoundaries.X)
                 velocity = new Vector2(-velocity.X, velocity.Y);
             //  checking top boundary
-            if (position.Y + velocity.Y < 0)
+            if (position.Y + velocity.Y < Game1.ceiling * size.Y)
                 velocity = new Vector2(0.0f, 0.0f);
             
             position += velocity;
