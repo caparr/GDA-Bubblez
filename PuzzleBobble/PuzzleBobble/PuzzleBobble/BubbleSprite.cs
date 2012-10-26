@@ -18,7 +18,7 @@ namespace PuzzleBobble
         public Vector2 velocity { get; set; }
         public Vector2 size { get; set; }        
         public int colour { get; set; }
-        public bool isHanging { get; set; }
+        public bool isFalling { get; set; }
 
         Rectangle sourceRect;
         Vector2 origin;
@@ -30,7 +30,7 @@ namespace PuzzleBobble
             colour = newColour;
             size = new Vector2(22.0f, 22.0f);
             //horizontalBoundaries = new Vector2(leftBoundary, rightBoundary);
-            isHanging = false;
+            isFalling = false;
         }
 
         public bool Collides(BubbleSprite otherSprite)
@@ -39,7 +39,8 @@ namespace PuzzleBobble
             if (this.position.X + this.size.X > otherSprite.position.X &&
                     this.position.X < otherSprite.position.X + otherSprite.size.X &&
                     this.position.Y + this.size.Y > otherSprite.position.Y &&
-                    this.position.Y < otherSprite.position.Y + otherSprite.size.Y)
+                    this.position.Y < otherSprite.position.Y + otherSprite.size.Y &&
+                    !otherSprite.isFalling)
                 return true;
             else
                 return false;
@@ -69,8 +70,8 @@ namespace PuzzleBobble
         {            
             sourceRect = new Rectangle(0, colour * (int)size.X, (int)size.X, (int)size.Y);
             origin = new Vector2(sourceRect.Width / 2, sourceRect.Height / 2);
-            spriteBatch.Draw(texture, position, sourceRect, Color.White);//texture, position, sourceRect, Color.White, 0f, origin, SpriteEffects.None, 0f);
-            //spriteBatch.Draw(texture, position, sourceRect, Color.White, 0f, new Vector2(size.X / 2, size.Y / 2), 1.0f, SpriteEffects.None, 0.0f);
+            spriteBatch.Draw(texture, position, sourceRect, Color.White);
+            //spriteBatch.Draw(texture, position, sourceRect, Color.White, 0f, new Vector2(0f, 0f), 1.2f, SpriteEffects.None, 0.0f);
         }
     }
 }
