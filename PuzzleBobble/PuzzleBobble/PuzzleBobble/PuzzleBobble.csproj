@@ -74,6 +74,7 @@
   <ItemGroup>
     <Compile Include="BubbleSprite.cs" />
     <Compile Include="ComparingBubbleSprites.cs" />
+    <Compile Include="ExplodingBubbleSprite.cs" />
     <Compile Include="NeedleSprite.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Program.cs" />

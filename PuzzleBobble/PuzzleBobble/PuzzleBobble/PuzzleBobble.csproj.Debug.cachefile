@@ -1,11 +1,13 @@
 Content\needle.xnb
-Content\Bubbles.xnb
 Content\NeedleFrame.xnb
 Content\Score.xnb
-Content\level1.xnb
-Content\level2.xnb
-Content\level3.xnb
 Content\ShinyBubbles16.xnb
 Content\SideBorder.xnb
 Content\LosingLine.xnb
 Content\Bag.xnb
+Content\Explosions32.xnb
+Content\level1.xnb
+Content\level2.xnb
+Content\DeadBubbles.xnb
+Content\Lost.xnb
+Content\Won.xnb
